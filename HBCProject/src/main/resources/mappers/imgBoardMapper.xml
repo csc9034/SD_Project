@@ -1,0 +1,298 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.ImgBoardMapper">
+
+   <insert id="create">
+   
+     <selectKey keyProperty="imgnum" resultType="int" order="BEFORE">
+       select seq_img_board.nextval FROM DUAL
+      </selectKey>
+   
+      insert into tbl_img_board(imgnum, title, content,  intronum, adminid)
+      values(#{imgnum}, #{title}, #{content}, #{intronum}, #{adminId})
+      <!-- values(seq_img_board.nextval, #{title}, #{content}, #{intronum}, #{adminId}) -->
+      
+   </insert>
+
+   <select id="read" resultType="com.hbc.domain.ImgBoardVO">
+      select img.imgnum
+         , img.title
+         , img.content
+         , img.intronum
+         , img.adminid
+         , img.regdate
+         , img.viewcnt
+         , img.moddate
+           , comp.compnum
+           , comp.compname
+      from tbl_img_board img, TBL_PROGRAM_BOARD p, TBL_COMPANY comp
+      where img.intronum = p.intronum and 
+      comp.COMPNUM = p.COMPNUM and
+      imgnum = #{imgnum}
+   </select>
+
+   <update id="update">
+      update tbl_img_board
+      set title = #{title}
+      , content = #{content}
+      , intronum = #{intronum}
+      , adminid = #{adminId}
+      , moddate = sysdate
+      where imgnum = #{imgnum}
+   </update>
+
+   <delete id="delete">
+      delete
+      from tbl_img_board
+      where imgnum = #{imgnum}
+   </delete>
+
+   <select id="listAll" resultType="com.hbc.domain.ImgBoardVO">
+         <![CDATA[
+            select imgnum
+                 , title
+                 , content
+                 , adminid
+                 , regdate
+                 , viewcnt
+              from tbl_img_board
+             where imgnum >0
+             order by imgnum desc, regdate desc   
+         ]]>
+   </select>
+
+   <update id="updateViewCnt">
+      update tbl_img_board
+      set viewcnt = viewcnt + 1
+      where imgnum = #{imgnum}
+   </update>
+
+   <select id="listPage" resultType="com.hbc.domain.ImgBoardVO">
+         <![CDATA[
+            select *
+              from (select imgnum
+                         , title
+                         , content
+                         , adminid
+                         , regdate
+                         , viewcnt
+                      from tbl_img_board
+                     where imgnum >0)
+             where rownum <= #{page}
+             order by imgnum desc, regdate desc   
+         ]]>
+   </select>
+
+   <select id="listCriteria" resultType="com.hbc.domain.ImgBoardVO">
+         <![CDATA[
+            select *
+              from (select rownum rnum
+                         , imgnum
+                         , title
+                         , content
+                         , adminid
+                         , regdate
+                         , viewcnt
+                      from tbl_img_board
+                     where imgnum >0)
+             where (rnum >= #{pageStart}
+               AND  rnum <= #{pageEnd})
+             order by imgnum desc, regdate desc    
+         ]]>
+   </select>
+
+   <select id="countPaging" resultType="int">
+      <![CDATA[
+         select count(imgnum)
+           from tbl_img_board
+          where imgnum > 0
+      ]]>
+      
+      <include refid="search" />
+      
+   </select>
+
+   <select id="listSearch" resultType="com.hbc.domain.ImgBoardVO">
+         
+          SELECT b.* 
+            FROM (select 
+            <include refid="listPage"></include>
+            
+    <![CDATA[                 
+                       , img.imgnum
+                       , img.intronum
+                       , img.title 
+                       , img.content 
+                       , img.adminid 
+                       , img.regdate 
+                       , img.viewcnt 
+                       , (select f.name from tbl_img_file f where f.num = img.imgnum and rownum = 1) name
+                    FROM tbl_img_board img
+                   WHERE img.imgnum > 0 
+       ]]> 
+      <include refid="search" />
+        <![CDATA[
+            )b where (rnum >= #{pageStart} 
+               AND  rnum <= #{pageEnd}) 
+         ]]> 
+         
+         
+   </select> 
+   
+   <!-- listSearch수정 -->
+<!--    <select id="listSearch" resultType="com.hbc.domain.ImgBoardVO"> -->
+     
+<!--          SELECT b.* -->
+<!--            FROM (SELECT  -->
+<!--             <include refid="listPage"></include> -->
+           
+<!--            <![CDATA[    imgnum -->
+<!--                        , title -->
+<!--                        , regdate -->
+<!--                        , moddate -->
+<!--                        , content -->
+<!--                        , viewcnt -->
+<!--                        , imtronum -->
+<!--                        , adminid -->
+<!--                    FROM tbl_img_board  -->
+<!--                   WHERE b.imgnum > 0 -->
+                         
+<!--       ]]> -->
+
+<!--       <include refid="search"></include> -->
+<!--         ORDER BY num DESC -->
+<!--       <![CDATA[ -->
+<!--          ) b -->
+<!--          WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd}) -->
+         
+<!--       ]]> -->
+<!--    </select> -->
+   
+   
+   
+   
+   
+   
+   <select id="listSearchCount" resultType="int">
+      <![CDATA[
+         select count(imgnum)
+           from tbl_img_board
+          where imgnum > 0
+      ]]>
+      <include refid="search" />
+      
+   </select>
+
+   <sql id="search">
+      <if test="searchType != null">
+         <if test="searchType == 't'.toString()">
+            and title like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'c'.toString()">
+            and content like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'w'.toString()">
+            and adminid like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'tc'.toString()">
+            and ( title like '%' || #{keyword} || '%'
+            or content like
+            '%' || #{keyword} || '%')
+         </if>
+         <if test="searchType == 'cw'.toString()">
+            and (content like '%' || #{keyword} || '%'
+            or adminid like
+            '%' || #{keyword} || '%')
+         </if>
+         <if test="searchType == 'tcw'.toString()">
+            and ( title like '%' || #{keyword} || '%'
+            or content like
+            '%' || #{keyword} || '%'
+            or adminid like '%' || #{keyword} || '%')
+         </if>
+      </if>
+   </sql>
+
+   <insert id="addAttach">
+      insert into tbl_img_file(name, regdate, main, num) 
+      values(#{name}, sysdate, #{main}, #{num} )
+   </insert>
+
+
+
+   <select id="getUAttach" resultType="com.hbc.domain.ImgFileVO">
+      select name, regdate, main, num 
+        from tbl_img_file 
+       where num = #{imgnum} and main='0'
+     order by regdate
+   </select>
+   
+   <select id="getUMainAttach" resultType="com.hbc.domain.ImgFileVO">
+      select name, regdate, main, num 
+        from tbl_img_file 
+       where num = #{imgnum} and main='1'
+     order by regdate
+   </select>
+   
+   <select id="getAttach" resultType="String">
+      select name, regdate, main, num 
+        from tbl_img_file 
+       where num = #{imgnum} and main='0'
+     order by regdate
+   </select>
+   
+   <select id="getMainAttach" resultType="String">
+      select name, regdate, main, num 
+        from tbl_img_file 
+       where num = #{imgnum} and main='1'
+     order by regdate
+   </select>
+
+
+   <delete id="deleteAttach">
+      delete from tbl_img_file 
+       where num = #{imgnum}
+   </delete>
+
+   <!-- 추가 -->
+   <sql id="listPage">
+      <if test="listType == null">
+         ROW_NUMBER() OVER (ORDER BY img.regdate DESC) rnum 
+      </if>
+      <if test="listType != null">
+      
+         <if test="listType == ''.toString()">
+            ROW_NUMBER() OVER (ORDER BY img.regdate DESC) rnum 
+         </if>
+         <if test="listType == 'dd'.toString()">
+            ROW_NUMBER() OVER (ORDER BY img.regdate DESC) rnum 
+         </if>
+         <if test="listType == 'da'.toString()">
+             ROW_NUMBER() OVER (ORDER BY img.regdate ASC) rnum 
+         </if>
+         <if test="listType == 'vc'.toString()">
+             ROW_NUMBER() OVER (ORDER BY img.viewcnt DESC) rnum 
+         </if>
+      </if>
+   </sql>
+
+   <select id="relatAtt" parameterType="int"  resultType="com.hbc.domain.ImgBoardVO">
+    <![CDATA[                 
+      select img.imgnum
+           , img.title 
+           , img.content 
+           , img.adminid 
+           , img.regdate 
+           , img.intronum
+           , img.viewcnt 
+           , f.name 
+        FROM tbl_img_board img 
+        JOIN tbl_img_file f 
+          ON img.imgnum = f.num 
+       WHERE img.imgnum > 0 
+       AND f.main = '1'
+         and img.intronum = (select intronum from tbl_img_board where imgnum = #{imgnum})         
+       ]]> 
+   </select> 
+</mapper>

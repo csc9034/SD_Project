@@ -1,0 +1,256 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mappers.CompanyMapper">
+	<!-- 등록하는 쿼리 -->
+	<insert id="create">
+		INSERT INTO tbl_company (
+		  compnum
+		, compname
+		, zipcode
+		, phone
+		, frontaddr
+		, rearaddr
+		, compfield
+		, imglink
+		, compdesc
+		, target 
+		, division)
+		VALUES ( seq_company.nextval
+				, #{compname}
+				, #{zipcode}
+				, #{phone}
+				,#{frontaddr}
+				, #{rearaddr}
+				, #{compfield}
+				, #{imglink}
+				, #{compdesc}
+				, #{target}
+				, #{division}) 
+	</insert>
+
+	<!--수정하는 쿼리 -->
+	  <update id="update">
+		UPDATE tbl_company
+		SET 
+		<if test="compname != null">
+			 compname = #{compname}
+		</if>
+		<if test="zipcode != null">
+			, zipcode = #{zipcode}
+		</if>
+		<if test="phone != null">
+			, phone = #{phone}
+		</if>
+		<if test="frontaddr != null">
+			, frontaddr = #{frontaddr}
+		</if>
+		<if test="rearaddr != null">
+			, rearaddr = #{rearaddr}
+		</if>
+		<if test="compfield != null">
+			, compfield = #{compfield}
+		</if>
+		<if test="imglink != null">
+			, imglink = #{imglink}
+		</if>
+		<if test="compdesc != null">
+			, compdesc = #{compdesc}
+		</if>
+		<if test="target != null">
+			, target = #{target}
+		</if>
+			, division = #{division}
+		<trim prefix="SET" prefixOverrides="," />
+		WHERE compnum = #{compnum}
+	</update>
+
+	<!--삭제하는 쿼리-->
+	<delete id="delete">
+		DELETE tbl_company
+		WHERE compnum = #{compnum}
+	</delete>
+
+	<select id="read" resultType="com.hbc.domain.CompanyVO">
+		SELECT compnum
+				, compname
+				, zipcode
+				, phone
+				, frontaddr
+				, rearaddr
+				, compfield
+				, imglink
+				, compdesc
+				, target
+				, division
+		  FROM tbl_company
+		 WHERE compnum = #{compnum}
+	</select>
+
+	<select id="listAll" resultType="com.hbc.domain.CompanyVO">
+		<![CDATA[
+		SELECT	compnum
+				, compname
+				, zipcode
+				, phone
+				, frontaddr
+				, rearaddr
+				, compfield
+				, imglink
+				, compdesc
+				, target 
+				, division
+		  FROM  tbl_company
+		 WHERE compnum > 0
+		 ORDER BY compnum DESC
+		 ]]>
+	</select>
+	
+	<!-- 사용자 화면에서 뿌려주는 리스트 -->
+	<select id="listView" resultType="com.hbc.domain.CompanyVO">
+		<![CDATA[
+		SELECT	compnum
+				, compname
+				, zipcode
+				, phone
+				, frontaddr
+				, rearaddr
+				, compfield
+				, imglink
+				, compdesc
+				, target 
+				, division
+		  FROM  tbl_company
+		 WHERE compnum > 0
+		]]>
+			<if test="division != 0">
+				AND division = #{division}
+			</if>
+		<![CDATA[
+		 ORDER BY compnum DESC
+		 ]]>
+	</select>
+	
+	<sql id="search">
+      <if test="searchType != null">
+         <if test="searchType == 'n'.toString()">
+            AND compname like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 't'.toString()">
+            AND target like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'f'.toString()">
+            AND compfield like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'nf'.toString()">
+            AND (   compname   like '%' || #{keyword} || '%'
+                 OR compfield   like '%' || #{keyword} || '%'
+                )
+         </if>
+         <if test="searchType == 'nt'.toString()">
+            AND (   compname   like '%' || #{keyword} || '%'
+                 OR target   like '%' || #{keyword} || '%'
+                )
+         </if>
+         <if test="searchType == 'tf'.toString()">
+            AND (   target   like '%' || #{keyword} || '%'
+                 OR compfield   like '%' || #{keyword} || '%'
+                )
+         </if>
+         <if test="searchType == 'ntf'.toString()">
+            AND (   compname   like '%' || #{keyword} || '%'
+                 OR compfield   like '%' || #{keyword} || '%'
+                 OR target  like '%' || #{keyword} || '%'
+                )
+         </if>
+      </if>   
+   </sql>
+   
+   <select id="listSearch" resultType="com.hbc.domain.CompanyVO">
+      <![CDATA[
+         SELECT *
+           FROM (SELECT rownum AS rnum
+                        , compnum
+						, compname
+						, zipcode
+						, phone
+						, frontaddr
+						, rearaddr
+						, compfield
+						, imglink
+						, compdesc
+						, target 
+						, division
+                 FROM tbl_company
+                WHERE compnum > 0
+      ]]>
+      <include refid="search" />
+      <![CDATA[
+                ORDER BY compnum DESC
+               )
+          WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+          ORDER BY compnum DESC
+      ]]>
+   </select>
+   
+   <select id="listSearchCount" resultType="int">
+      <![CDATA[
+         SELECT count(compnum)
+           FROM tbl_company
+          WHERE compnum > 0
+      ]]>
+      <include refid="search" />
+   </select>
+   
+   <select id="countPaging" resultType="int">
+   <![CDATA[
+      SELECT count(compnum)
+        FROM tbl_company
+       WHERE compnum > 0
+   ]]>
+   </select> 
+   
+   <!--이미지 등록 쿼리  -->
+   <insert id="addAttach">
+      INSERT INTO tbl_emp_file (filenum, name)
+      VALUES (seq_emp_file.nextval, #{filename})
+   </insert>
+   
+   <select id="getCurrFileSeq" resultType="int">
+      SELECT MAX(filenum) FROM tbl_emp_file
+   </select>
+   
+    <delete id="deleteImage">
+      DELETE tbl_emp_file
+       WHERE filenum = #{filenum}
+   </delete>
+   
+   <delete id="deleteImageByName">
+      DELETE tbl_emp_file
+       WHERE name = #{filename}
+   </delete>
+   
+   <delete id="deleteImageByEmp">
+      DELETE tbl_emp_file
+       WHERE filenum = (SELECT filenum
+                          FROM tbl_employee
+                         WHERE empnum = #{empnum}
+                        )  
+   </delete>
+   
+     <select id="getAttach" resultType="string">
+       SELECT imglink
+         FROM tbl_company
+        WHERE compnum = #{compnum}
+   </select>
+   
+   	<select id="listComp" resultType="com.hbc.domain.CompanyVO">
+		select compNum
+			  ,compName
+		from tbl_company
+	</select>
+   
+   
+</mapper>

@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.VideoBoardMapper">
+
+	<insert id="create">
+		INSERT INTO
+		tbl_video_board(num ,adminid, title, link,
+		regdate, content, compnum)
+		VALUES
+		(seq_video_board.nextval, #{adminid} ,#{title},
+		#{link},
+		sysdate, #{content},#{compnum})
+	</insert>
+
+
+	<update id="update">
+		update tbl_video_board
+		set
+		title = #{title}
+		, link = #{link}
+		, content = #{content}
+		, moddate = sysdate
+		, compnum = #{compnum}
+		where num = #{num}
+	</update>
+
+	<delete id="delete">
+		delete from tbl_video_board
+		where num = #{num}
+	</delete>
+	
+
+
+	<select id="read" resultType="com.hbc.domain.VideoBoardVO">
+		SELECT 
+		  b.num
+		, b.title
+		, b.regdate
+		, b.viewcnt
+		, b.content
+		, b.link
+		, b.compnum
+		FROM tbl_video_board b
+		WHERE b.num = #{num}
+	</select>
+
+
+
+
+	<update id="updateViewCnt">
+		UPDATE tbl_video_board b
+		SET b.viewcnt = b.viewcnt + 1
+		WHERE b.num = #{num}
+	</update>
+		
+		<!-- 정렬순 셀렉트박스에 사용되는 쿼리 -->
+		<sql id="listPage">
+		<if test="listType == null">
+			ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum 
+		</if>
+		<if test="listType != null">
+		
+			<if test="listType == ''.toString()">
+				ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum 
+			</if>
+			<if test="listType == 'dd'.toString()">
+				ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum 
+			</if>
+			<if test="listType == 'da'.toString()">
+				 ROW_NUMBER() OVER (ORDER BY regdate ASC) rnum 
+			</if>
+			<if test="listType == 'vc'.toString()">
+				 ROW_NUMBER() OVER (ORDER BY viewcnt DESC) rnum 
+			</if>
+		</if>
+		
+	</sql>
+	
+	
+	<sql id="compNum">
+		<if test="numType != null">
+		
+			<if test="numType == ''.toString()">
+			</if>
+			<if test="numType == '1'.toString()">
+			   AND v.compnum = 1
+			</if>
+			<if test="numType == '2'.toString()">
+			    AND v.compnum = 2
+			</if>
+		</if>
+	</sql>
+	
+	<select id="listPage" resultType="com.hbc.domain.VideoBoardVO">
+   <![CDATA[
+      SELECT b.*
+        FROM ( b.num, b.title, b.regdate, b.viewcnt,b.content, b.adminid
+               FROM tbl_video_board b
+                WHERE b.num > 0 ) b
+       WHERE rownum <= #{page}
+       ORDER BY b.num DESC, b.regdate DESC 
+   ]]>
+	</select>
+
+
+
+
+	<select id="listCriteria"
+		resultType="com.hbc.domain.VideoBoardVO">
+   <![CDATA[
+      SELECT b.*
+        FROM (SELECT rownum as rnum
+                  , b.num
+                  , b.adminid
+                  , b.title
+                  , b.regdate
+                  , b.content
+                  , b.viewcnt
+                 FROM tbl_video_board b
+                WHERE b.num > 0) b
+       WHERE (b.rnum >= #{pageStart} AND b.rnum <= #{pageEnd})
+       ORDER BY b.num DESC, b.regdate DESC
+   ]]>
+	</select>
+	
+	<select id="countPaging" resultType="int">
+   <![CDATA[
+      SELECT COUNT(num)
+        FROM tbl_video_board b
+       WHERE b.num > 0
+   ]]>
+	</select>
+
+	<sql id="search">
+		<if test="searchType != null">
+			<if test="searchType == 't'.toString()">
+				AND title LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'c'.toString()">
+				AND content LIKE '%' || #{keyword} || '%'
+			</if>
+
+			<if test="searchType == 'w'.toString()">
+				AND adminid LIKE '%' || #{keyword} || '%'
+			</if>
+
+			<if test="searchType == 'tc'.toString()">
+				AND ( title LIKE '%' || #{keyword} || '%'
+				OR content LIKE
+				'%' || #{keyword} || '%')
+			</if>
+
+			<if test="searchType == 'cw'.toString()">
+				AND ( title LIKE '%' || #{keyword} || '%'
+				OR adminid LIKE
+				'%' || #{keyword} || '%')
+			</if>
+			<if test="searchType == 'twc'.toString()">
+				AND ( title LIKE '%' || #{keyword} || '%'
+				OR content LIKE
+				'%' || #{keyword} || '%'
+				OR adminid LIKE '%' || #{keyword} || '%')
+			</if>
+
+		</if>
+		
+		
+		
+	</sql>
+
+
+
+
+	<!-- 정렬순 적용된 검색리스트 -->
+	<select id="listSearch" resultType="com.hbc.domain.VideoBoardVO">
+     
+         SELECT b.*
+           FROM (SELECT 
+            <include refid="listPage"></include>
+           
+           <![CDATA[ 
+                       , v.num
+                       , v.adminid
+                       , v.link
+                       , v.title
+                       , v.regdate
+                       , v.viewcnt
+                       , v.content
+                       , v.compnum 
+                       , c.compname
+                   FROM tbl_video_board v, tbl_company c
+                  WHERE num > 0  and v.compnum = c.compnum
+      ]]>
+		<include refid="compNum"></include>
+		<include refid="search"></include>
+        <!-- ORDER BY num DESC -->
+      <![CDATA[
+         ) b
+         WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+         
+      ]]>
+	</select>
+	
+		
+	<select id="listSearchCount" resultType="int">
+      <![CDATA[
+         SELECT COUNT(v.num)
+           FROM tbl_video_board v
+          WHERE v.num > 0 
+      ]]>
+
+		<include refid="search"></include>
+		<include refid="compNum"></include>
+	</select>
+	
+	
+	<select id="listSearchCountUser" resultType="int">
+      <![CDATA[
+         SELECT COUNT(v.num)
+           FROM tbl_video_board v, tbl_company c
+          WHERE num > 0 and v.compnum = 1 and v.compnum = c.compnum
+      ]]>
+
+		<include refid="search"></include>
+	</select>
+	
+	<!--  -->
+	<select id="companyList" resultType="com.hbc.domain.CompanyVO">
+		SELECT c.compnum
+			 , c.compname
+		FROM  tbl_company c
+		
+				
+	</select>
+	
+	
+	<select id="listSearchUser" resultType="com.hbc.domain.VideoBoardVO">
+     
+         SELECT b.*
+           FROM (SELECT 
+            <include refid="listPage"></include>
+           
+           <![CDATA[ 
+                       , v.num
+                       , v.adminid
+                       , v.link
+                       , v.title
+                       , v.regdate
+                       , v.viewcnt
+                       , v.content
+                       , v.compnum 
+                       , c.compname
+                   FROM tbl_video_board v, tbl_company c
+                  WHERE num > 0 and v.compnum = 1 and v.compnum = c.compnum
+      ]]>
+
+		<include refid="search"></include>
+        <!-- ORDER BY num DESC -->
+      <![CDATA[
+         ) b
+         WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+         
+      ]]>
+	</select>
+	
+	
+	
+
+</mapper>

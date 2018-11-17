@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.reviewMapper">
+	
+    <!-- 등록 -->
+	<insert id="insert">
+	
+	<selectKey keyProperty="reviewNum" resultType="int" order="BEFORE">
+	
+	select seq_courreview.nextval from dual
+	
+	</selectKey>
+	
+		INSERT INTO tbl_courreview 
+		( reviewnum
+		, reviewtitle
+		, reviewtext
+		, adminid
+		, cournum)   
+ 		VALUES 
+ 		( #{reviewNum}
+ 		, #{reviewTitle}
+ 		, #{reviewText}
+ 		, #{adminId}
+ 		, #{courNum}	)
+ 		
+	</insert>
+	
+	<insert id="insertLink">
+		INSERT INTO tbl_LINK 
+		( linknum
+		, uri
+		, reviewnum)   
+ 		VALUES 
+ 		( SEQ_LINK.nextval
+ 		, #{uri}
+ 		, #{reviewNum}	)
+	</insert>
+		
+
+	<!-- 수정 -->
+	<update id="update">
+		UPDATE tbl_courreview    
+        <set>
+             remoddate  = sysdate
+            <if test="reviewTitle != null">
+           , reviewtitle = #{reviewTitle}
+            </if>
+            <if test="reviewText != null">
+           , reviewtext = #{reviewText}
+            </if>
+            <if test="courNum != null">
+           , cournum = #{courNum}
+            </if>
+        </set>
+        <trim prefix="SET" prefixOverrides=","/>   
+       WHERE reviewnum = #{reviewNum}
+	</update>
+
+
+	<!-- 링크 수정 -->
+	<update id="updateLink">
+		UPDATE tbl_LINK    
+        <set>
+            <if test="uri != null">
+            uri = #{uri}
+            </if>
+        </set>
+        <trim prefix="SET" prefixOverrides=","/>   
+       WHERE reviewnum = #{reviewNum}
+	</update>
+	
+	<!-- 삭제 -->
+	<delete id="delete">
+		DELETE tbl_courreview
+  		WHERE reviewnum = #{reviewNum}
+	</delete>
+	
+	
+		<!-- 삭제 -->
+	<delete id="deleteLink">
+		DELETE tbl_LINK
+  		WHERE reviewnum = #{reviewNum}
+	</delete>
+	
+	<!-- 1개 조회 -->
+	<select id="read" resultType="com.hbc.domain.ReviewVO">
+<!-- 		SELECT reviewnum,
+			   reviewtitle,
+        	   reviewtext,
+        	   adminid,
+        	   cournum,
+        	   reregdate
+  		  FROM tbl_courreview
+  		 WHERE reviewnum = #{reviewNum} -->
+
+SELECT review.reviewnum,
+       review.reviewtitle,
+       review.reviewtext,
+       review.adminid,
+       review.cournum,
+       review.reregdate,
+       review.reviewCnt,
+       comp.compname,
+       comp.compnum,
+       cour.COURNAME,
+       cour.cournum,
+       emp.empname
+  	FROM tbl_courreview review, tbl_company comp, tbl_employee emp, tbl_course cour
+ WHERE review.cournum = cour.cournum and cour.EMPNUM = emp.EMPNUM 
+		and comp.COMPNUM = emp.COMPNUM and review.reviewnum = #{reviewNum} 		 
+	</select>
+	
+	<select id="readLink" resultType="String">
+	
+	select uri from tbl_link where reviewnum = #{reviewNum}
+	
+	</select>
+	
+	<!-- 뷰카운트 증가 -->
+	<update id="updateViewCnt">
+		UPDATE tbl_courreview
+		   SET reviewcnt = reviewcnt + 1
+		 WHERE reviewNum = #{reviewNum}     
+	</update>
+	
+	<!-- 전체 조회 -->
+	<sql id="listPage">
+      <if test="listType == null">
+         ROW_NUMBER() OVER (ORDER BY re.reregdate DESC) rnum 
+      </if>
+      <if test="listType != null">
+      
+         <if test="listType == ''.toString()">
+            ROW_NUMBER() OVER (ORDER BY re.reregdate DESC) rnum 
+         </if>
+         <if test="listType == 'new'.toString()">
+             ROW_NUMBER() OVER (ORDER BY re.reregdate DESC) rnum 
+         </if>
+         <if test="listType == 'most'.toString()">
+             ROW_NUMBER() OVER (ORDER BY re.reviewcnt DESC) rnum 
+         </if>
+      </if>
+   </sql>
+	
+	
+	<select id="listSearch" resultType="com.hbc.domain.ReviewVO">
+	
+			SELECT reviewnum,
+         		   reviewtitle,
+          		   courname,
+                   compname,
+         		   reviewcnt,
+         		   reregdate,
+         		   adminid
+   FROM ( select 
+			<include refid="listPage"></include>
+		,
+   
+		<![CDATA[
+		
+                 re.reviewnum,
+                 re.reviewtitle,
+                 cour.courname,
+                 com.compname,
+                re.reviewcnt,
+                re.reregdate,
+                re.adminid
+            from tbl_courreview re, 
+                 tbl_course cour,
+                 tbl_employee emp,
+                 tbl_company com
+           where (re.COURNUM = cour.COURNUM) 
+             AND (cour.EMPNUM = emp.empnum) 
+             AND (emp.compnum = com.COMPNUM)
+             AND (reviewnum > 0)  
+		]]>
+		
+		<include refid="search"></include>
+<!-- 			  ORDER BY re.reviewnum DESC -->
+
+		<![CDATA[
+			) WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+		]]>
+		
+	</select>
+	
+	<!-- 페이지 수 -->
+	<select id="listSearchCount" resultType="int">
+		<![CDATA[
+			SELECT count(reviewnum)
+			  FROM tbl_courreview re,
+			  	   tbl_company com, 
+			  	   tbl_course cour,
+			  	   tbl_employee emp
+			 WHERE (re.COURNUM = cour.COURNUM) 
+             AND (cour.EMPNUM = emp.empnum) 
+             AND (emp.compnum = com.COMPNUM)
+             AND (reviewnum > 0)  
+		]]>
+		
+		<include refid="search"></include>
+		
+	</select>
+	
+	<!-- 검색 조건  -->
+	<sql id="search">
+		<if test="searchType != null">
+			<if test="searchType == 't'.toString()">
+				and re.reviewtitle like '%' || #{keyword} || '%'		
+			</if>
+			<if test="searchType == 'c'.toString()">
+				and re.reviewtext  like '%' || #{keyword} || '%'		
+			</if>
+			<if test="searchComp != 0">
+				and com.compnum = #{searchComp} 
+			</if>
+			<if test="searchCour != 0">
+				and cour.cournum = #{searchCour}
+			</if>
+		</if>
+	</sql>
+	
+	<!-- 정렬조건 -->
+	<sql id="list">
+      <if test="listType != null">
+         <if test="listType == 'new'.toString()">
+            ORDER BY reregdate desc  
+         </if>
+         <if test="listType == 'most'.toString()">
+            ORDER BY reviewcnt DESC
+         </if>
+      </if>
+   </sql>
+	
+		<!-- ajax 기관에 맞는 강좌 조회 -->
+	<select id="searchCourseList" resultType="com.hbc.domain.CourseVO">
+    select cournum, courname, compnum 
+      from tbl_course c 
+      join tbl_employee e 
+       on c.empnum = e.empnum 
+     where e.compnum=#{compNum}
+	</select>
+	
+	<!-- ajax 기관 조회 -->
+	<select id="ajaxSearchList" resultType="com.hbc.domain.CompanyVO">
+		SELECT compnum,
+			   compname
+		  FROM tbl_company
+	</select>
+
+</mapper>

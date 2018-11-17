@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.programMapper">
+
+	<insert id="insert">
+		insert into tbl_program_board (intronum, title, content, category, link, adminid, compnum)
+		values(seq_program_board.nextval, #{title}, #{content}, #{category}, #{link}, #{adminId}, #{compnum})
+		<!-- insert into TBL_PROGRAM_BOARD (INTRONUM, TITLE, CONTENT, CATEGORY, 
+			LINK, COMPNUM) values(SEQ_PROGRAM_BOARD.nextval, #{TITLE}, #{CONTENT}, 1, 
+			#{LINK}, 100); 타 기능 구현때까지 일단 관리자 아이디, 센터번호 받아오는것은 예외로 함. -->
+	</insert>
+
+	<select id="read" resultType="com.hbc.domain.ProgramVO">
+		select intronum
+		, title
+		, content
+		, category
+		, link
+		, compnum
+		, adminid
+		, compnum
+		from tbl_program_board
+		where intronum = #{intronum}
+	</select>
+
+	<update id="update">
+		 UPDATE tbl_program_board
+			SET title = #{title}
+			  , content = #{content}
+			  , link = #{link}
+			  , compnum = #{compnum}
+			  , category = #{category}
+			  , moddate = sysdate
+		  WHERE intronum = #{intronum}
+	</update>
+
+	<delete id="delete">
+		DELETE FROM tbl_program_board
+		WHERE intronum = #{intronum}
+	</delete>
+
+
+	
+
+	<select id="searchlist" resultType="com.hbc.domain.ProgramVO">
+      <![CDATA[
+      select
+*
+from
+(select rownum rnum
+     , g.INTRONUM
+     , g.TITLE
+     , g.CONTENT
+     , g.CATEGORY
+     , g.LINK
+     , g.COMPNUM
+     , g.regdate
+     , g.name
+  from  (select *
+    from (select ROW_NUMBER() OVER (PARTITION BY a.intronum order by a.imgnum) jang
+               , a.name
+               , a.intronum
+               , a.title
+               , a.CONTENT
+               , a.CATEGORY
+               , a.LINK
+               , a.COMPNUM
+               , a.regdate
+            from (select b.imgnum
+                       , p.intronum
+                       , p.title
+                       , ff.name 
+                       , p.CONTENT
+                       , p.CATEGORY
+                       , p.LINK
+                       , p.COMPNUM
+                       , p.regdate
+                    from tbl_img_board b , tbl_program_board p, tbl_img_file ff 
+                   where b.INTRONUM(+) = p.INTRONUM 
+                     and b.imgnum = ff.num(+) 
+                   order by ff.name desc, p.intronum, b.imgnum) a) v
+              where v.jang=1
+     ]]> 
+     <!-- 카테고리 받아와야함. -->
+      <include refid="search"></include>
+     <![CDATA[
+     
+     ORDER by INTRONUM desc) g)
+     WHERE (rnum >= #{pageStart}
+               AND  rnum <= #{pageEnd})
+       order by INTRONUM desc, regdate desc
+     ]]>
+   </select>
+
+	<select id="listSearchCount" resultType="int">
+      <![CDATA[
+         SELECT COUNT(intronum)
+           FROM tbl_program_board
+          WHERE intronum > 0
+      ]]>
+		<include refid="search"></include>
+	</select>
+	
+	<select id="centerList" resultType="com.hbc.domain.ProgramVO">
+		<![CDATA[
+			select compnum, compname from tbl_company
+		]]>
+		 
+	</select>
+	
+	<sql id="search">
+		<if test="searchType != null">
+			<if test="searchType == 't'.toString()">
+				and title LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'c'.toString()">
+				and content LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'tc'.toString()">
+				and (title LIKE '%' || #{keyword} || '%'
+				or content LIKE '%' || #{keyword} || '%')
+			</if>
+			
+		</if>
+		<if test="compnums != null">
+			<if test="compnums == 0">
+		   	 </if>
+		   	 <if test="compnums != 0">
+		   	   and compnum = ${compnums} 
+		   	 </if>
+		</if>
+		<if test="categorize != null">
+			<if test="categorize == 0">
+			</if>
+			
+			<if test="categorize != 0">
+				and category = #{categorize}
+			</if>
+			
+		</if>
+	</sql>
+	
+	
+	
+	<select id="listPage" resultType="com.hbc.domain.ProgramVO">
+         <![CDATA[
+            select *
+              from (select intronum
+                        , title
+                        , content
+                        , category
+                        , link
+                        , compnum
+                        , regdate
+                      from tbl_program_board
+                     where intronum > 0 )
+             where rownum <= #{page}
+             order by intronum desc, regdate desc   
+         ]]>
+   </select>
+   
+   <!-- 사이드메뉴 -->
+   
+   <select id="sideList" resultType="com.hbc.domain.CompanyVO">
+   	select compnum, compname from tbl_company
+   
+   </select>
+   
+   <select id="progUserList" resultType="com.hbc.domain.ProgramVO">
+   	select intronum
+   		 , title
+   		 , link
+   		 , content
+   	  from tbl_program_board
+   	 where 
+   	 <if test="category == null">
+   	 	   category = 1
+   	 </if>
+   	 <if test="category != null">
+   	 	   category = ${category}
+   	 </if>
+   	 <if test="compnum == null">
+   	   and compnum = 1 
+   	 </if>
+   	 <if test="compnum != null">
+   	   and compnum = ${compnums} 
+   	 </if>
+   </select>
+   
+   <!-- 상세보기는 관리자와 동일  -->
+   
+   <!--  -->
+   
+   <select id="mainImgCall" resultType="com.hbc.domain.ImgFileVO">
+   select name, num from tbl_img_file 
+   				where num IN(select imgnum
+			   				   from tbl_img_board 
+			   				  WHERE intronum = #{introNum}
+			   				    and MAIN = 1)
+   </select>
+   
+   <!-- 프로그램 대표이미지 -->
+   
+   <select id="imgsCall" resultType="com.hbc.domain.ImgFileVO"> 
+   select f.* 
+   from tbl_img_file f
+   where f.num IN (select imgnum from tbl_img_board where intronum = #{introNum})
+   </select>
+   
+   <select id="imgsCalls" resultType="com.hbc.domain.ImgFileVO"> 
+   select f.* 
+   from tbl_img_file f
+   where f.num IN (select imgnum from tbl_img_board)
+   
+   </select>
+   
+   <select id="listProg" resultType="com.hbc.domain.ProgramVO">
+		select p.intronum
+			 , p.title
+		from TBL_PROGRAM_BOARD p, TBL_COMPANY c
+		where p.compnum = c.compnum
+		  AND p.compnum = #{num}
+	</select>
+	
+		<select id="listAjaxProg" resultType="com.hbc.domain.ProgramVO">
+		select p.intronum
+			 , p.title
+		from TBL_PROGRAM_BOARD p, TBL_COMPANY c
+		where p.compnum = c.compnum
+		  AND compname = #{compname}
+	</select>
+   
+</mapper>

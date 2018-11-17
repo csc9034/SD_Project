@@ -1,0 +1,211 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.ImgGalleryBoardMapper">
+
+   <insert id="insert">
+      <selectKey keyProperty="galnum" resultType="int" order="BEFORE">
+         SELECT seq_gallery_board.nextval FROM DUAL
+      </selectKey>
+         INSERT INTO tbl_gallery_board(galnum, title, content, compnum, adminid)
+         VALUES(#{galnum}, #{title}, #{content}, #{compnum}, #{adminId})
+   </insert>
+
+   <select id="read" resultType="com.hbc.domain.GalleryBoardVO">
+      SELECT g.galnum
+          , g.title
+          , g.content
+          , g.adminid
+          , g.regdate
+          , g.moddate
+          , g.viewcnt
+          , g.compnum
+          , c.compname
+      FROM tbl_gallery_board g JOIN tbl_company c ON g.compnum = c.compnum
+      WHERE g.galnum = #{galnum}
+   </select>
+
+   <update id="update">
+      UPDATE tbl_gallery_board g
+         SET g.title = #{title}
+          , g.content = #{content}
+          , g.compnum = #{compnum}
+          , g.adminid = #{adminId}
+          , g.moddate = sysdate
+       WHERE galnum = #{galnum}
+   </update>
+
+   <delete id="delete">
+      DELETE FROM tbl_gallery_board
+      WHERE galnum = #{galnum}
+   </delete>
+
+   <update id="updateViewCnt">
+      UPDATE tbl_gallery_board
+         SET viewcnt = viewcnt + 1
+       WHERE galnum = #{galnum}
+   </update>
+
+   <!-- 정렬순 적용된 검색리스트 -->
+   <select id="listSearch"
+      resultType="com.hbc.domain.GalleryBoardVO">
+      SELECT b.*
+      FROM (SELECT
+      <include refid="listPage"></include>
+              <![CDATA[ 
+                     , g.galnum
+                     , g.title 
+                     , g.content 
+                     , g.compnum
+                     , g.adminid 
+                     , g.regdate 
+                     , g.viewcnt
+                     , (SELECT f.name
+                       FROM tbl_gallery_file f
+                      WHERE f.galnum = g.galnum
+                        AND rownum = 1) as name
+                FROM tbl_gallery_board g
+               WHERE g.galnum > 0
+                 AND g.compnum != 1
+            ]]>
+      <include refid="search"></include>
+      <!-- ORDER BY num DESC -->
+      <![CDATA[
+         ) b
+         WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+      ]]>
+   </select>
+   
+   <!-- 정렬순 적용된 검색리스트 -->
+   <select id="adminListSearch"
+      resultType="com.hbc.domain.GalleryBoardVO">
+      SELECT b.*
+      FROM (SELECT
+      <include refid="listPage"></include>
+              <![CDATA[ 
+                     , g.galnum
+                     , g.title 
+                     , g.content 
+                     , g.compnum
+                     , g.adminid 
+                     , g.regdate 
+                     , g.viewcnt
+                     , (SELECT f.name
+                       FROM tbl_gallery_file f
+                      WHERE f.galnum = g.galnum
+                        AND rownum = 1) as name
+                FROM tbl_gallery_board g
+               WHERE g.galnum > 0
+                 AND g.compnum != 1
+            ]]>
+      <include refid="search"></include>
+      <!-- ORDER BY num DESC -->
+      <![CDATA[
+         ) b
+         WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+      ]]>
+   </select>
+
+   <select id="listSearchCount" resultType="int">
+      <![CDATA[
+         select count(galnum)
+           from tbl_gallery_board
+          where galnum > 0
+            and compnum != 1
+      ]]>
+      <include refid="search" />
+   </select>
+
+   <sql id="search">
+      <if test="searchType != null">
+         <if test="searchType == 't'.toString()">
+            and g.title like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'c'.toString()">
+            and g.content like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'tc'.toString()">
+            and (g.title like '%' || #{keyword} || '%'
+            or g.content like
+            '%' || #{keyword} || '%')
+         </if>
+      </if>
+   </sql>
+
+   <insert id="addAttach">
+      insert into tbl_gallery_file(name, regdate, galnum)
+      values(#{name}, sysdate, #{galnum})
+   </insert>
+
+   <select id="getAttach" resultType="String">
+      SELECT f.NAME
+          , f.REGDATE
+          , f.GALNUM
+        FROM tbl_gallery_file f
+       WHERE galnum = #{galnum}
+       ORDER BY regdate
+   </select>
+
+   <delete id="deleteAttach">
+      DELETE FROM tbl_gallery_file
+       WHERE galnum = #{galnum}
+   </delete>
+
+   <select id="countPaging" resultType="int">
+      <![CDATA[
+         SELECT COUNT(galnum)
+           FROM tbl_gallery_board g
+          WHERE g.galnum > 0
+      ]]>
+      <include refid="search" />
+   </select>
+
+   <!-- 추가 -->
+   <sql id="listPage">
+      <if test="listType == null">
+         ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum
+      </if>
+      <if test="listType != null">
+         <if test="listType == ''.toString()">
+            ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum
+         </if>
+         <if test="listType == 'dd'.toString()">
+            ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum
+         </if>
+         <if test="listType == 'da'.toString()">
+            ROW_NUMBER() OVER (ORDER BY regdate ASC) rnum
+         </if>
+         <if test="listType == 'vc'.toString()">
+            ROW_NUMBER() OVER (ORDER BY viewcnt DESC) rnum
+         </if>
+      </if>
+   </sql>
+
+   <select id="listCriteria" resultType="com.hbc.domain.GalleryBoardVO">
+      <![CDATA[
+         SELECT b.*
+           FROM (SELECT rownum as rnum
+                      , b.galnum
+                      , b.adminid
+                      , b.title
+                      , b.regdate
+                      , b.content
+                      , b.viewcnt
+                   FROM tbl_gallery_board b
+                  WHERE b.galnum > 0) b
+          WHERE (b.rnum >= #{pageStart} AND b.rnum <= #{pageEnd})
+          ORDER BY b.galnum DESC, b.regdate DESC
+      ]]>
+   </select>
+
+   <select id="listPage" resultType="com.hbc.domain.GalleryBoardVO">
+      <![CDATA[
+         SELECT b.*
+           FROM ( galnum, title, regdate, viewcnt,content, adminid
+                  FROM tbl_gallery_board 
+                   WHERE galnum > 0 ) b
+          WHERE rownum <= #{page}
+          ORDER BY b.galnum DESC, b.regdate DESC 
+      ]]>
+   </select>
+</mapper>

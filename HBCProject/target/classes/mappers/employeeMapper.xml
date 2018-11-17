@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="com.hbc.mappers.EmployeeMapper">
+
+	<insert id="insert">
+		INSERT INTO tbl_employee (  empnum 
+		                          , empname
+		                          , empphone
+		                          , empemail
+		                          , position
+		                          , compnum
+		                          <if test="snslink1 != null">
+		                          , snslink1
+		                          </if>
+		                          <if test="snslink2 != null">
+		                          , snslink2
+		                          </if>
+		                          <if test="snslink3 != null">
+		                          , snslink3
+		                          </if>
+		                          <if test="filenum != 0">
+		                          , filenum
+		                          </if>
+		                          <if test="empdesc != null">
+		                          , empdesc
+		                          </if>
+		                         )  
+						  VALUES (  seq_employee.nextval
+						          , #{empname} 
+						          , #{empphone}
+						          , #{empemail}
+						          , #{position}
+						          , #{compnum}
+						          <if test="snslink1 != null">
+						          , #{snslink1}
+						          </if>
+						          <if test="snslink2 != null">
+						          , #{snslink2}
+						          </if>
+						          <if test="snslink3 != null">
+						          , #{snslink3}
+						          </if>
+						          <if test="filenum != 0">
+						          , #{filenum}
+						          </if>
+						          <if test="empdesc != null">
+						          , #{empdesc}
+						          </if>
+						  	   )
+	</insert>
+	
+	<insert id="addAttach">
+		INSERT INTO tbl_emp_file (filenum, name)
+		VALUES (seq_emp_file.nextval, #{name})
+		
+		<selectKey keyProperty="filenum" resultType="integer">
+			SELECT seq_emp_file.currval 
+			  FROM dual
+		</selectKey>
+	</insert>
+	
+	<update id="modify">
+		UPDATE tbl_employee 
+			<set>   
+			        empname  = #{empname}
+                  , empphone = #{empphone}
+                  , empemail = #{empemail}
+                  , position = #{position}
+                  , compnum  = #{compnum}
+                  <if test="snslink1 != null">
+                  , snslink1 = #{snslink1}
+                  </if>
+                  <if test="snslink2 != null">
+                  , snslink2 = #{snslink2}
+                  </if>
+                  <if test="snslink3 != null">
+                  , snslink3 = #{snslink3}
+                  </if>
+                  <if test="filenum != 0">
+                  , filenum  = #{filenum}
+                  </if>
+                  <if test="empdesc != null">
+                  , empdesc  = #{empdesc}
+                  </if>
+		   </set>		       
+		 WHERE empnum = #{empnum}
+	</update>
+	
+	<delete id="delete">
+		DELETE tbl_employee
+		 WHERE empnum = #{empnum}
+	</delete>
+	
+	<delete id="deleteImage">
+		DELETE tbl_emp_file
+		 WHERE filenum = #{filenum}
+	</delete>
+	
+	<delete id="deleteImageByName">
+		DELETE tbl_emp_file
+		 WHERE name = #{filename}
+	</delete>
+	
+	<delete id="deleteImageByEmp">
+		DELETE tbl_emp_file
+		 WHERE filenum = (SELECT filenum
+		                    FROM tbl_employee
+		                   WHERE empnum = #{empnum}
+		                  )  
+	</delete>
+	
+	<select id="read" resultType="com.hbc.domain.EmployeeVO">
+		SELECT empnum
+		     , empname
+		     , empphone
+		     , empemail
+		     , position
+		     , snslink1
+		     , snslink2
+		     , snslink3
+		     , compnum
+		     , filenum
+		     , empdesc
+		  FROM tbl_employee
+		 WHERE empnum = #{empnum}
+	</select>
+	
+	<select id="getAttach" resultType="string">
+		 SELECT name
+		   FROM tbl_emp_file
+		  WHERE filenum = (SELECT filenum
+		                     FROM tbl_employee
+		                    WHERE empnum = #{empnum}
+		                  ) 
+	</select>
+	
+	<sql id="search">
+		<if test="searchType != null">
+			<if test="searchType == 'n'.toString()">
+				AND empname like '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'p'.toString()">
+				AND position like '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'np'.toString()">
+				AND (   empname   like '%' || #{keyword} || '%'
+				     OR position   like '%' || #{keyword} || '%'
+				    )
+			</if>
+		</if>	
+	</sql>
+	
+	<select id="listSearch" resultType="com.hbc.domain.EmployeeVO">
+		<![CDATA[
+			SELECT *
+			  FROM (SELECT rownum AS rnum
+			             , empnum
+					     , empname
+					     , position
+					     , c.compname as compname
+					  FROM tbl_employee e, tbl_company c
+					 WHERE c.compnum = e.compnum
+					   AND empnum > 0
+		]]>
+		<include refid="search" />
+		<![CDATA[
+					 ORDER BY empnum DESC
+				   )
+			 WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+			 ORDER BY empnum DESC
+		]]>
+	</select>
+	
+	<select id="listSearchCount" resultType="int">
+		<![CDATA[
+			SELECT count(empnum)
+			  FROM tbl_employee
+			 WHERE empnum > 0
+		]]>
+		<include refid="search" />
+	</select>
+	
+	<select id="countPaging" resultType="int">
+	<![CDATA[
+		SELECT count(empnum)
+		  FROM tbl_employee
+		 WHERE empnum > 0
+	]]>
+	</select> 
+	
+	<select id="readComps" resultType="com.hbc.dto.CompanyDTO">
+     	SELECT compNum
+     	     , compName
+     	  FROM tbl_company
+     </select>
+	
+</mapper>

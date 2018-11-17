@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mappers.StudentMapper">
+
+<!-- 학원생을 등록해 주는 쿼리 -->
+	<insert id="create">
+		INSERT INTO TBL_STUDENT ( stuid
+		                        , stupw
+		                        , stuname
+		                        , stuemail
+		                        , stuphone
+		                        , compnum
+		                        )
+		VALUES ( #{stuid}
+		       , #{stupw}
+		       , #{stuname}
+		       , #{stuemail}
+		       , #{stuphone}
+		       , #{compnum}
+			)
+	</insert>
+	
+<!-- 특정 학원생을 조회하는 쿼리 -->
+	<select id="read" resultType="com.hbc.domain.StudentVO">
+		SELECT s.stuid
+		     , s.stuname
+             , s.stuemail 
+           	 , s.stuphone
+             , s.compnum
+             , c.compname
+		  FROM TBL_STUDENT s, TBL_COMPANY c
+		 WHERE s.compnum = c.compnum
+		   AND s.stuid  = #{stuid}
+	</select>
+		
+<!-- 학원생을 수정해 주는 쿼리 -->
+	<update id="update"  parameterType="com.hbc.domain.StudentVO">
+		UPDATE TBL_STUDENT s
+	   	  <set> 
+	   	   	<if test="stuname != null">
+	   	    	 s.stuname   = #{stuname}
+	   	    </if>
+	   	    <if test="stupw != null">
+	   	       , s.stupw   = #{stupw}
+	   	    </if>
+	   	   	<if test="stuemail != null">
+      	       , s.stuemail   = #{stuemail}
+	   	    </if>
+	   	   	<if test="stuphone != null">
+      	       , s.stuphone   = #{stuphone}
+	   	    </if>
+	   	    <trim prefix="SET" prefixOverrides="," />
+	 	    	WHERE s.stuid  = #{stuid}
+		</set>
+	</update>
+	
+<!-- 학원생을 삭제해 주는 쿼리 -->
+	<delete id="delete" parameterType="com.hbc.domain.StudentVO">
+		DELETE FROM TBL_STUDENT s
+		 WHERE s.stuid = #{stuid}
+	</delete>
+
+<!-- 기관의 이름을 조회하는 쿼리 -->		
+	<select id="compList" resultType="com.hbc.domain.CompanyVO">
+		 SELECT c.compname, c.compnum
+  		   FROM TBL_COMPANY c
+	</select>
+
+<!-- 페이징을 위한 쿼리 -->
+
+	
+	<select id="listSearch" resultType="com.hbc.domain.StudentVO">
+		<![CDATA[
+		SELECT *
+		  FROM ( SELECT rownum rnum 
+		  		      , s.stuid
+		  		      , s.stuname
+		  		      , co.compname
+           		      , s.stuemail 
+           		   	  , s.stuphone
+           		      , co.compnum
+		   		   FROM TBL_STUDENT s, TBL_COMPANY co
+		          WHERE s.compnum = co.compnum 
+		]]>
+		<include refid="search"></include>		
+		
+		<![CDATA[
+		  ORDER BY s.stuname desc
+			    ) 
+	      WHERE ( rnum >= #{pageStart} AND rnum <= #{pageEnd} )
+		  ORDER BY stuname desc
+		]]>
+	</select>
+	
+	
+	<sql id ="search">
+		<if test="searchType != null">
+			<if test="searchType == 's'.toString()">
+				AND s.stuname   LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'c'.toString()">
+				AND co.compname    LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'sc'.toString()">
+				AND ( s.stuname  LIKE '%' || #{keyword} || '%' 
+				OR    co.compname  LIKE '%' || #{keyword} || '%' )
+			</if>
+		</if>
+		
+	</sql>
+	
+	
+	<select id="listSearchCount" resultType="int">
+	
+		<![CDATA[
+		SELECT COUNT(s.stuid)
+		  FROM TBL_STUDENT s, TBL_COMPANY co
+		 WHERE s.compnum = co.compnum 
+		 ]]>
+		<include refid="search"></include>		
+		 
+	</select>
+	
+	<select id="login" resultType="com.hbc.domain.StudentVO">
+		SELECT stuid
+		     , stuname
+		     , stuphone
+		     , stuemail
+		     , compnum
+		  FROM tbl_student
+		 WHERE stuid = #{stuid}
+		   AND stupw = #{stupw}
+	</select>	
+	
+	
+</mapper>

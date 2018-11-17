@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+	
+<mapper namespace="com.hbc.mappers.CourseMapper">
+
+<!-- 과목을 등록해 주는 쿼리 -->
+	<insert id="create">
+		INSERT INTO TBL_COURSE (  cournum
+		                        , courname
+		                        , empnum )
+		VALUES (  seq_course.nextval
+		        , #{courname}
+		        , #{empnum}
+		        )
+	</insert>
+	
+<!-- 특정 과목을 수정해 주는 쿼리 -->
+	<update id="update"  parameterType="com.hbc.domain.CourseVO">
+		UPDATE TBL_COURSE c
+		<set>
+			<if test="courname != null">
+				c.courname = #{courname}
+			</if>
+			<if test="empnum != null">
+			  , c.empnum =  #{empnum}
+			</if>
+			<trim prefix="SET" prefixOverrides="," />
+			WHERE c.cournum = #{cournum}
+		</set>
+	</update>
+	
+<!-- 과목을 삭제해 주는 쿼리 -->
+	<delete id="delete" parameterType="com.hbc.domain.CourseVO">
+		DELETE FROM TBL_COURSE c
+		 WHERE c.cournum = #{cournum}
+	</delete>
+
+<!-- 과목을 전체 조회하는 쿼리 -->
+	<select id="listAll" resultType="com.hbc.domain.CourseVO">
+		<![CDATA[
+		SELECT c.cournum
+		     , c.courname
+		     , c.empnum
+		  FROM TBL_COURSE c
+		 WHERE c.cournum > 0
+		 ORDER BY c.ournum DESC
+		 ]]>
+	</select>	
+	
+<!-- 특정 과목을 조회하는 쿼리 -->
+	<select id="read" resultType="com.hbc.domain.CourseVO">
+		SELECT c.cournum
+		     , c.courname
+		     , c.empnum
+		  FROM TBL_COURSE c
+		 WHERE c.cournum = #{cournum}
+	</select>	
+
+<!-- 특정 과목을 조회하는 쿼리(DTO) -->
+	<select id="readDTO" resultType="com.hbc.dto.CourseDTO">
+		SELECT c.cournum
+		     , c.courname
+		     , e.empnum
+		     , e.empname
+		     , co.compnum
+		     , co.compname
+		  FROM TBL_COURSE c, TBL_EMPLOYEE e, TBL_COMPANY co
+		 WHERE c.empnum = e.empnum
+		   AND e.compnum = co.compnum 
+		   AND c.cournum = #{cournum}
+	</select>	
+
+
+<!-- 해당 기관 직원의 번호와 이름을 조회하는 쿼리 -->
+	<select id="empList" resultType="com.hbc.domain.EmployeeVO">
+		SELECT e.empnum, e.empname
+  	      FROM TBL_EMPLOYEE e, TBL_COMPANY c
+         WHERE e.compnum = c.compnum
+           AND c.compname = #{compname} 
+	</select>	
+
+<!-- 기관의 이름을 조회하는 쿼리 -->	
+	<select id="compList" resultType="com.hbc.domain.CompanyVO">
+		 SELECT c.compname, c.compnum
+  		   FROM TBL_COMPANY c
+	</select>
+	
+	<!-- 페이징을 위한 쿼리 -->
+	<select id="listCriteria" resultType="com.hbc.domain.CourseVO">
+		<![CDATA[
+		SELECT c.* 
+ 		  FROM (SELECT rownum rnum
+		             , cournum
+		             , courname
+		             , empnum
+		          FROM tbl_course 
+		         WHERE cournum > 0 ) c
+         WHERE ( rnum >= #{pageStart} AND rnum <= #{pageEnd} )
+         ORDER BY c.cournum DESC
+ 		]]>
+	</select> 
+	
+	<select id="countPaging" resultType="int">
+		<![CDATA[
+		SELECT count(cournum)
+ 		  FROM tbl_course  
+         WHERE cournum > 0 
+ 		]]>
+	</select> 
+	
+	
+	<sql id ="search">
+		<if test="searchType != null">
+			<if test="searchType == 'c'.toString()">
+				AND c.courname   LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 't'.toString()">
+				AND e.empname    LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'ct'.toString()">
+				AND ( c.courname LIKE '%' || #{keyword} || '%' 
+				OR    e.empname  LIKE '%' || #{keyword} || '%' )
+			</if>
+		</if>
+	</sql>
+	
+	<select id="listSearch" resultType="com.hbc.domain.CourseVO">
+		<![CDATA[
+		SELECT *
+		  FROM ( SELECT rownum rnum
+		              , c.cournum
+		              , c.courname
+		              , e.empname
+		          FROM tbl_course c, tbl_employee e, tbl_company co
+			      WHERE c.empnum = e.empnum
+		 		    AND e.compnum = co.compnum
+		            AND c.cournum > 0
+		]]>
+		<include refid="search"></include>		
+		
+		<![CDATA[
+		 ORDER BY cournum DESC
+			    ) 
+	      WHERE ( rnum >= #{pageStart} AND rnum <= #{pageEnd} )
+	      ORDER BY cournum DESC
+		]]>
+	</select>
+	
+	<select id="listSearchCount" resultType="int">
+	
+		<![CDATA[
+		SELECT COUNT(cournum)
+		  FROM tbl_course c, tbl_employee e
+		 WHERE c.cournum > 0
+		   AND c.empnum = e.empnum
+		 ]]>
+		<include refid="search"></include>		
+		 
+	</select>
+	
+</mapper>

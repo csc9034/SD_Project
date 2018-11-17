@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.NoticeMapper">
+
+	<insert id="create">
+		INSERT INTO tbl_notice(nonum, notitle, notext, nokeyword, adminid
+		,noregdate)
+		VALUES (seq_notice.nextval, #{noTitle}, #{noText}, #{noKeyword}, #{adminId},
+		sysdate)
+	</insert>
+
+	<select id="read" resultType="com.hbc.domain.NoticeVO">
+		SELECT *
+		FROM tbl_notice
+		WHERE nonum = #{noNum}
+	</select>
+
+	<update id="update">
+		UPDATE tbl_notice
+		<set>
+			nomoddate = sysdate
+			<if test="noTitle != null">
+				, notitle = #{noTitle}
+			</if>
+			<if test="noText != null">
+				, notext = #{noText}
+			</if>
+			<if test="noKeyword != null">
+				, nokeyword = #{noKeyword}
+			</if>
+		</set>
+		<trim prefix="SET" prefixOverrides="," />
+		WHERE nonum = #{noNum}
+	</update>
+
+	<delete id="delete">
+		DELETE FROM tbl_notice
+		WHERE nonum = #{noNum}
+	</delete>
+
+	<update id="updateNoViewCnt">
+		UPDATE tbl_notice SET
+		noviewcnt = noviewcnt+1
+		WHERE nonum = #{noNum}
+	</update>
+
+<!-- 	<sql id="listPage">
+		<if test="listType == null">
+			ROW_NUMBER() OVER (ORDER BY noregdate DESC) rnum
+		</if>
+	</sql> -->
+
+	<sql id="search">
+		<if test="listType != null">
+			<if test="listType == 1">
+				AND nokeyword = '1'
+			</if>
+			<if test="listType == 2">
+				AND nokeyword = '2'
+			</if>
+			<if test="listType == 3">
+				AND nokeyword = '3'
+			</if>
+		</if>
+		<if test="searchType == 't'.toString">
+			AND notitle LIKE '%' || #{keyword} || '%'
+		</if>
+		<if test="searchType == 'x'.toString">
+			AND notext LIKE '%' || #{keyword} || '%'
+		</if>
+		<if test="searchType == 'a'.toString">
+			AND adminid LIKE '%' || #{keyword} || '%'
+		</if>
+		<if test="searchType == 'tx'.toString">
+			AND (notitle LIKE '%' || #{keyword} || '%'
+			OR notext LIKE
+			'%' || #{keyword} || '%')
+		</if>
+		<if test="searchType == 'xa'.toString">
+			AND (notext LIKE '%' || #{keyword} || '%'
+			OR adminid LIKE
+			'%' || #{keyword} || '%')
+		</if>
+	</sql>
+
+	<select id="listSearch" resultType="com.hbc.domain.NoticeVO">
+	
+		SELECT b.*
+		FROM (SELECT
+		ROW_NUMBER() OVER (ORDER BY noregdate DESC) rnum
+           
+           <![CDATA[ 
+                   , nonum
+  			  	   , notitle
+  			  	   , notext
+  			  	   , nokeyword
+  			  	   , adminid
+  			  	   , noregdate
+  			  	   , noviewcnt
+  			  	FROM tbl_notice
+  			   WHERE nonum > 0
+      ]]>
+
+		<include refid="search"></include>
+		
+      <![CDATA[
+         ) b
+         WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+         
+      ]]>
+	</select>
+	
+	<select id="topList" resultType="com.hbc.domain.NoticeVO">
+	<![CDATA[
+	  SELECT * FROM (SELECT * 
+	  				   FROM tbl_notice 
+	  				  WHERE nonum > 0 AND nokeyword='1' 
+	  				  ORDER BY noregdate DESC) 
+	  		  WHERE rownum <= 3
+	]]>
+	</select>
+
+	<select id="listSerachCount" resultType="int">
+  		<![CDATA[
+  			SELECT COUNT(nonum)
+  			  FROM tbl_notice
+  			 WHERE nonum > 0
+  		]]>
+
+		<include refid="search"></include>
+	</select>
+
+	<insert id="addAttach">
+		INSERT INTO tbl_attach(filename, nonum)
+		VALUES (#{fullName}, seq_notice.currval)
+	</insert>
+
+	<select id="getAttach" resultType="string">
+		SELECT filename
+		FROM tbl_attach
+		WHERE nonum=#{noNum}
+		ORDER BY regdate
+	</select>
+
+	<delete id="deleteAttach">
+		DELETE FROM tbl_attach WHERE nonum = #{noNum}
+	</delete>
+	
+	<delete id="deleteOneAttach">
+		DELETE FROM tbl_attach WHERE filename=#{fullName}
+	</delete>
+
+	<insert id="replaceAttach">
+		INSERT INTO tbl_attach(filename, nonum)
+		VALUES (#{fullName}, #{noNum})
+	</insert>
+
+	<insert id="addLink">
+		INSERT INTO tbl_link(linknum, uri, filename)
+		VALUES (seq_link.nextval, #{uri}, #{fullName})
+	</insert>
+
+	<select id="getLink" resultType="string">
+		SELECT uri
+		FROM tbl_link
+		WHERE filename=#{fullName}
+	</select>
+
+	<!-- <delete id="deleteLink">
+		DELETE FROM tbl_link WHERE nonum=#{noNum}
+	</delete> -->
+	
+	<delete id="deleteLink">
+		DELETE FROM tbl_link WHERE filename=#{fullName}
+	</delete>
+
+	<insert id="replaceLink">
+		INSERT INTO tbl_link(linkNum, uri, filename)
+		VALUES (seq_link.nextval, #{uri}, #{fullName})
+	</insert>
+</mapper>

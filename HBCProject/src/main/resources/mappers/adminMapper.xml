@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+  
+<mapper namespace="com.hbc.mappers.AdminMapper">
+
+   <select id="login" resultType="com.hbc.domain.AdminVO">
+      SELECT adminid
+          , adminname
+          , adminphone
+          , adminemail 
+          , compnum
+        FROM tbl_admin
+       WHERE adminid = #{adminid}
+         AND adminpw = #{adminpw}
+   </select>
+   
+   <!-- 어드민 객체 한개를 읽어오는 매퍼 -->
+   <!-- 어드민 아이디로 검색해서 맞는 행을 불러옴 -->
+   <select id="read" resultType="AdminVO" parameterType="AdminVO">
+      SELECT adminId as adminId
+           , adminPw as adminPw
+           , adminName as adminName
+           , adminPhone as adminPhone
+           , adminEmail as adminEmail
+           , compNum as compNum
+        FROM tbl_admin
+       WHERE adminId = #{adminId}
+   </select>
+    
+    <!-- 어드맨 행 하나를 추가하는 매퍼 -->
+   <insert id="insert" parameterType="AdminVO">
+      INSERT INTO tbl_admin (
+                                 adminid
+                             , adminpw
+                             , adminname
+                             , adminphone
+                             , adminemail
+                             , compnum
+                            )
+                     VALUES (
+                                #{adminId}
+                              , #{adminPw}
+                              , #{adminName}
+                              , #{adminPhone}
+                              , #{adminEmail}
+                              , #{compNum}
+                            )
+   </insert>
+   
+   <!-- 어드민 객체를 받아와서 수정하는 매퍼 -->
+   <update id="update">
+      UPDATE tbl_admin
+         SET adminName = #{adminName}
+           , adminPhone = #{adminPhone}
+           , adminEmail = #{adminEmail}
+           , compnum = #{compNum}
+           <if test="adminPw != null">
+           , adminpw = #{adminPw}
+           </if>
+       WHERE adminid = #{adminId}
+   </update>
+   
+   <!-- 어드맨 객체를 받아와서 삭제하는 매퍼 -->
+   <delete id="delete">
+      DELETE FROM tbl_admin
+            WHERE adminid = #{adminId}
+   </delete>
+   
+   <!-- 어드민 행 모두를 불러오는 매퍼 -->
+   <select id="listAll" resultType="AdminVO">
+      SELECT adminid
+           , adminpw
+           , adminname
+           , adminphone
+           , adminemail
+           , compnum
+        FROM tbl_admin
+   </select>
+   
+   <!-- 어드민 검색결과를 불러오는 매퍼 -->
+   <select id="listSearch" resultType="AdminVO">
+   <![CDATA[
+      SELECT *
+          FROM (SELECT rownum rnum
+                    , adminid
+                    , adminpw
+                    , adminname
+                    , adminphone
+                    , adminemail
+                    , a.compnum
+                    , c.compname as compname
+                FROM tbl_admin a, tbl_company c
+               WHERE a.compnum = c.compnum
+   ]]>
+             <!-- 검색 쿼리 -->
+                <include refid="search"/>
+   <![CDATA[
+                ORDER BY adminid DESC)
+         WHERE (rnum >= #{pageStart}
+                 AND rnum <= #{pageEnd})
+    ]]>                  
+   </select>
+   
+   <!-- 어드민 검색 쿼리 -->
+   <sql id="search">
+      <if test="searchType != null">
+         <if test="searchType == 'nameid'.toString()">
+            AND (adminid LIKE '%' || #{keyword} || '%'
+                OR adminname LIKE '%' || #{keyword} || '%')
+         </if>
+         <if test="searchType == 'phone'.toString()">
+            AND adminphone like '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'email'.toString()">
+            AND adminemail like '%' || #{keyword} || '%'
+         </if>
+      </if>
+   </sql>
+   
+   <!-- 검색 결과를 포함한 행의 개수를 카운트하는 매퍼 -->
+   <select id="listSearchCount" resultType="int">
+      SELECT COUNT(adminid)
+         FROM tbl_admin
+        WHERE 1 = 1
+     <include refid="search"></include>
+   </select>
+   
+   <!--  -->
+   <select id="validatePhone" resultType="AdminVO">
+        SELECT *
+          FROM tbl_admin
+         WHERE adminPhone = #{adminPhone}
+     </select>
+     <select id="validateEmail" resultType="AdminVO">
+        SELECT *
+          FROM tbl_admin
+         WHERE adminEmail = #{adminEmail}
+     </select>
+     
+     <select id="readComps" resultType="com.hbc.dto.CompanyDTO">
+        SELECT compNum
+             , compName
+          FROM tbl_company
+     </select>
+   
+</mapper>

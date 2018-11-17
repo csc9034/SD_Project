@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.MainLinkMapper">
+
+	<insert id="create">
+				  insert into tbl_main_link (compnum, linkname)
+                  values(#{compNum},#{linkName})
+	</insert>
+	
+	<update id="update">
+		UPDATE tbl_main_link
+		SET
+		  linkname = #{linkName}
+		WHERE compnum = #{compNum}
+	</update>
+
+	<delete id="delete">
+		DELETE FROM tbl_main_link
+		where compNum = #{compNum}
+	</delete>
+
+	<!-- 수정화면에서 셀렉박스 목록을 보여주는 쿼리(링크등록이된 기관만 보여줌) -->
+	<select id="mainLinkList" resultType="com.hbc.domain.MainLinkVO">
+		SELECT l.compnum
+			 , c.compname
+			 , l.regdate
+			 , l.linkname
+		FROM tbl_main_link l , tbl_company c
+		where l.compnum = c.compnum
+		
+				
+	</select>
+	
+	<!-- 등록화면에서 셀렉박스 목록을 보여주는 쿼리(링크 등록이 안된 기관만 보여줌) -->
+	<select id="mainLinkListInsert" resultType="com.hbc.domain.MainLinkVO">
+	select compnum, compname 
+	  from tbl_company 
+	 where compnum not in(select compnum from tbl_main_link)
+	
+	</select>
+	
+	
+	
+
+	
+	<!-- 수정화면으로 넘어가는 쿼리 -->
+	<select id="detail" resultType="com.hbc.domain.MainLinkVO">
+		SELECT l.compnum
+			 , l.regdate
+			 , l.linkname
+		FROM tbl_main_link l
+		WHERE l.compnum = #{compNum}
+	</select>
+	
+
+</mapper>

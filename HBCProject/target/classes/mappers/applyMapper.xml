@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+	"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mappers.ApplyMapper">
+
+<!-- 수강을 등록해 주는 쿼리 -->
+	<insert id="create">
+		INSERT INTO TBL_APPLY ( appnum
+		                      , sdate
+		                      , edate
+		                      , dayinfo
+		                      , spec
+		                      , price
+		                      , link
+		                      , cournum
+		                      , stuid )
+		VALUES ( seq_apply.nextval
+		       , #{sdate}
+		       , #{edate}
+		       , #{dayinfo}
+		       , #{spec}
+		       , #{price}
+		       , #{link}
+		       , #{cournum}
+		       , #{stuid} )
+	</insert>
+	
+<!-- 수강을 수정해 주는 쿼리 -->
+	<update id="update"  parameterType="com.hbc.domain.ApplyVO">
+		UPDATE TBL_APPLY a
+	   	  <set> 
+	   	   	<if test="sdate != null">
+	   	    	 a.sdate   = #{sdate}
+	   	    </if>
+	   	   	<if test="edate != null">
+      	       , a.edate   = #{edate}
+	   	    </if>
+	   	   	<if test="dayinfo != null">
+      	       , a.dayinfo   = #{dayinfo}
+	   	    </if>
+	   	   	<if test="spec != null">
+	     	   , a.spec    = #{spec}
+	   	    </if>
+	   	   	<if test="price != null">
+	    	   , a.price   = #{price}
+	   	    </if>
+	   	   	<if test="link != null">
+	           , a.link    = #{link}
+	   	    </if>
+	   	   	<if test="cournum != null">
+	   		   , a.cournum = #{cournum}
+	   	    </if>
+	   	   	<if test="stuid != null">
+	   		   , a.stuid = #{stuid}
+	   	    </if>
+	   	    <trim prefix="SET" prefixOverrides="," />
+	 	    	WHERE a.appnum  = #{appnum}
+		</set>
+	</update>
+	
+<!-- 수강을 삭제해 주는 쿼리 -->
+	<delete id="delete" parameterType="com.hbc.domain.ApplyVO">
+		DELETE FROM TBL_APPLY a
+		 WHERE a.appnum = #{appnum}
+	</delete>
+	
+<!-- 수강을 전체 조회하는 쿼리 -->
+	<select id="listAll" resultType="com.hbc.domain.ApplyVO">
+		<![CDATA[
+		SELECT a.appnum
+		     , a.sdate
+		     , a.edate
+		     , a.dayinfo
+		     , a.spec
+		     , a.price
+		     , a.link
+		     , a.cournum
+		  FROM TBL_APPLY a
+		 WHERE a.appnum > 0
+		 ORDER BY a.appnum DESC
+		 ]]>
+	</select>
+	
+<!-- 특정 수강을 조회하는 쿼리 -->
+	<select id="read" resultType="com.hbc.domain.ApplyVO">
+		SELECT a.appnum
+		     , a.sdate
+		     , a.edate
+  		     , a.dayinfo
+		     , a.spec
+		     , a.price
+		     , a.link
+		     , a.cournum
+		  FROM TBL_APPLY a
+		 WHERE a.appnum  = #{appnum}
+	</select>
+	
+<!-- 기관의 이름을 조회하는 쿼리 -->		
+	<select id="compList" resultType="com.hbc.domain.CompanyVO">
+		 SELECT c.compname, c.compnum
+  		   FROM TBL_COMPANY c
+	</select>
+
+<!-- 수학의시선을 제외한 기관의 이름을 조회하는 쿼리 -->		
+	<select id="appCompList" resultType="com.hbc.domain.CompanyVO">
+		 SELECT c.compname, c.compnum
+  		   FROM TBL_COMPANY c
+  		  WHERE NOT c.compnum = 1
+	</select>
+		
+<!-- 특정 기관의 해당 과목을 조회하는 쿼리 -->	
+	<select id="courList" resultType="com.hbc.domain.CourseVO">
+   		 SELECT c.COURNUM
+         	  , c.COURNAME
+		   FROM TBL_COURSE c, TBL_COMPANY co, TBL_EMPLOYEE e
+		  WHERE e.empnum = c.empnum 
+            AND co.compnum = e.compnum
+            AND co.compname = #{compname}
+	</select>	
+	
+<!-- modfiy 시 특정 수강의 기관 정보와 과목 정보를 담은 ApplyDTO를 모두 조회할 수 있는 쿼리  -->
+	<select id  ="readDTO" resultType="com.hbc.dto.ApplyDTO">
+		  SELECT co.compnum
+               , co.compname
+               , a.appnum
+               , c.cournum
+         	   , c.courname
+         	   , s.stuid
+         	   , s.stuname
+		   FROM TBL_COURSE c, TBL_COMPANY co, TBL_EMPLOYEE e, TBL_APPLY a, TBL_STUDENT s
+		  WHERE e.empnum = c.empnum 
+            AND co.compnum = e.compnum
+            AND a.cournum = c.cournum
+            AND s.stuid   = a.stuid
+            AND a.appnum = #{appnum}
+	</select>
+
+	
+<!-- User View 수강리스트 쿼리 -->
+	<sql id ="userSearch">
+		<if test="searchType != null">
+			<if test="searchType == 'c'.toString()">
+				AND c.courname   LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 't'.toString()">
+				AND co.compname    LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'ct'.toString()">
+				AND ( c.courname  LIKE '%' || #{keyword} || '%' 
+				OR    co.compname  LIKE '%' || #{keyword} || '%' )
+			</if>
+		</if>
+		
+		 <if test="compnum != null">
+			AND co.compnum = #{compnum}
+		</if>  
+	</sql>
+	
+		<select id="userListSearch" resultType="com.hbc.domain.ApplyVO">
+		<![CDATA[
+		SELECT *
+		  FROM ( SELECT rownum rnum 
+		  		      , a.appnum
+		  		      , a.link
+		  		      , a.spec
+           		      , a.sdate 
+           		   	  , a.edate
+           		   	  , a.dayinfo
+           		   	  , a.price
+           			  , co.compname
+           		      , c.COURNAME
+                 	  , s.stuid
+         	          , s.stuname
+		   		   FROM TBL_COURSE c, TBL_COMPANY co, TBL_EMPLOYEE e, TBL_APPLY a, TBL_STUDENT s
+		          WHERE e.empnum = c.empnum 
+                    AND co.compnum = e.compnum
+                    AND e.empnum  = c.empnum
+                    AND a.cournum = c.cournum
+                    AND s.stuid   = a.stuid
+                    AND co.compnum != 1 
+                    AND s.stuid = #{stuid}
+		            AND a.appnum > 0
+		]]>
+		
+		<![CDATA[
+		 ORDER BY a.appnum DESC
+			    ) 
+	      WHERE ( rnum >= #{pageStart} AND rnum <= #{pageEnd} )
+	      ORDER BY appnum DESC
+		]]>
+	</select>
+	
+		<select id="userListSearchCount" resultType="int">
+	
+		<![CDATA[
+		SELECT COUNT(a.appnum)
+		  FROM TBL_COURSE c, TBL_COMPANY co, TBL_EMPLOYEE e, TBL_APPLY a, TBL_STUDENT s
+		          WHERE e.empnum = c.empnum 
+                    AND co.compnum = e.compnum
+                    AND e.empnum  = c.empnum
+                    AND a.cournum = c.cournum
+                    AND s.stuid   = a.stuid
+                    AND not co.compnum = 1 
+                    AND s.stuid = #{stuid}
+		            AND a.appnum > 0
+		 ]]>
+		<include refid="search"></include>		
+		 
+	</select>
+<!-- 끝 -->	
+
+<!-- 페이징을 위한 쿼리 -->
+
+	
+		<select id="listSearch" resultType="com.hbc.domain.ApplyVO">
+		<![CDATA[
+		SELECT *
+		  FROM ( SELECT rownum rnum 
+		  		      , a.appnum
+		  		      , a.link
+		  		      , a.spec
+           		      , a.sdate 
+           		   	  , a.edate
+           		   	  , a.dayinfo
+           		   	  , a.price
+           			  , co.compname
+           		      , c.courname
+                 	  , s.stuid
+         	          , s.stuname
+		   		   FROM TBL_COURSE c, TBL_COMPANY co, TBL_EMPLOYEE e, TBL_APPLY a, TBL_STUDENT s
+		          WHERE e.empnum = c.empnum 
+                    AND co.compnum = e.compnum
+                    AND e.empnum  = c.empnum
+                    AND a.cournum = c.cournum
+                    AND s.stuid   = a.stuid
+		            AND a.appnum > 0
+		]]>
+		<include refid="search"></include>		
+		
+		<![CDATA[
+		 ORDER BY a.appnum DESC
+			    ) 
+	      WHERE ( rnum >= #{pageStart} AND rnum <= #{pageEnd} )
+	      ORDER BY appnum DESC
+		]]>
+	</select>
+	
+	
+	<sql id ="search">
+		<if test="searchType != null">
+			<if test="searchType == 'c'.toString()">
+				AND c.courname   LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 't'.toString()">
+				AND co.compname    LIKE '%' || #{keyword} || '%'
+			</if>
+			<if test="searchType == 'ct'.toString()">
+				AND ( c.courname  LIKE '%' || #{keyword} || '%' 
+				OR    co.compname  LIKE '%' || #{keyword} || '%' )
+			</if>
+		</if>
+		
+	</sql>
+	
+	
+	<select id="listSearchCount" resultType="int">
+	
+		<![CDATA[
+		SELECT COUNT(a.appnum)
+		  FROM TBL_COURSE c, TBL_COMPANY co, TBL_EMPLOYEE e, TBL_APPLY a, TBL_STUDENT s
+		 WHERE e.empnum = c.empnum 
+           AND co.compnum = e.compnum
+           AND e.empnum  = c.empnum
+           AND a.cournum = c.cournum
+           AND s.stuid   = a.stuid
+           AND a.appnum > 0
+		 ]]>
+		<include refid="search"></include>		
+		 
+	</select>
+	
+
+</mapper>
+	

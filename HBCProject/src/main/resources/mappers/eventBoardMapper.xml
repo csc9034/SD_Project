@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.hbc.mapper.EventBoardMapper">
+
+	<insert id="create">
+		INSERT INTO tbl_event_board (num, title, content, paylink, applylink,
+		regdate, adminId)
+		VALUES (seq_event_board.nextval, #{title},
+		#{content}, #{paylink}, #{applylink}, sysdate, #{adminId})
+		<selectKey keyProperty="num" resultType="Integer"
+			order="AFTER">
+			SELECT seq_event_board.currval FROM dual
+		</selectKey>
+	</insert>
+
+	<insert id="createFile">
+		INSERT INTO tbl_event_file (name, type, regdate, num)
+		VALUES (#{name}, #{type}, sysdate, #{num})
+	</insert>
+
+	<insert id="addAttach">
+		INSERT INTO tbl_event_file (name, type, regdate, num)
+		VALUES (#{name}, #{type}, sysdate, #{num})
+	</insert>
+
+	<update id="update">
+		UPDATE tbl_event_board e
+		SET e.title = #{title}
+		,
+		e.content = #{content}
+		, e.paylink = #{paylink}
+		, e.applylink =
+		#{applylink}
+		, e.moddate = sysdate
+		WHERE e.num = #{num}
+	</update>
+
+	<delete id="delete">
+		DELETE FROM tbl_event_board e
+		WHERE e.num = #{num}
+	</delete>
+
+	<delete id="deleteFile">
+		DELETE FROM tbl_event_file f
+		WHERE f.num = #{num} and
+		f.type = ${type}
+	</delete>
+
+	<update id="updateViewCnt">
+		UPDATE tbl_event_board e
+		SET e.viewcnt = e.viewcnt + 1
+		WHERE e.num = #{num}
+	</update>
+
+	<select id="searchlist" resultType="com.hbc.domain.EventBoardVO">
+             SELECT b.*
+           FROM (SELECT 
+            <include refid="listPage"></include>
+           <![CDATA[ 
+                       , num
+                       , adminid
+                       , title
+                       , content
+                       , regdate
+                       , viewcnt
+                   FROM tbl_event_board
+                  WHERE num > 0
+      ]]>
+
+      <include refid="search"></include>
+        <!-- ORDER BY num DESC -->
+      <![CDATA[
+         ) b
+         WHERE (rnum >= #{pageStart} AND rnum <= #{pageEnd})
+      ]]>
+   </select>
+
+	<sql id="search">
+      <if test="searchType != null">
+         <if test="searchType == 't'.toString()">
+            AND title LIKE '%' || #{keyword} || '%'
+         </if>
+         <if test="searchType == 'c'.toString()">
+            AND content LIKE '%' || #{keyword} || '%'
+         </if>
+
+         <if test="searchType == 'w'.toString()">
+            AND adminid LIKE '%' || #{keyword} || '%'
+         </if>
+
+         <if test="searchType == 'tc'.toString()">
+            AND ( title LIKE '%' || #{keyword} || '%'
+            OR content LIKE
+            '%' || #{keyword} || '%')
+         </if>
+
+         <if test="searchType == 'cw'.toString()">
+            AND ( title LIKE '%' || #{keyword} || '%'
+            OR adminid LIKE
+            '%' || #{keyword} || '%')
+         </if>
+         <if test="searchType == 'twc'.toString()">
+            AND ( title LIKE '%' || #{keyword} || '%'
+            OR content LIKE
+            '%' || #{keyword} || '%'
+            OR adminid LIKE '%' || #{keyword} || '%')
+         </if>
+
+      </if>
+   </sql>
+
+	<select id="read" resultType="com.hbc.domain.EventBoardVO">
+		SELECT e.num
+		, e.title
+		, e.content
+		, e.adminid
+		, e.regdate
+		, e.applylink
+		, e.paylink
+		, e.viewcnt
+		FROM tbl_event_board e
+		WHERE e.num = #{num}
+	</select>
+
+	<select id="readFile" resultType="com.hbc.domain.EventFileVO">
+		SELECT e.name
+		, e.type
+		FROM
+		tbl_event_file e
+		WHERE e.num = #{num}
+		AND e.type = #{type}
+	</select>
+
+	<select id="listCriteria"
+		resultType="com.hbc.domain.EventBoardVO">
+      <![CDATA[
+            select *
+              from (select rownum rnum
+                         , num
+                         , title
+                         , content
+                         , regdate
+                      from tbl_event_board
+                     where num >0)
+             where (rnum >= #{pageStart}
+               AND  rnum <= #{pageEnd})
+             order by num desc, regdate desc    
+         ]]>
+	</select>
+
+	<select id="countPaging" resultType="int">
+      <![CDATA[
+         select count(num)
+           from tbl_event_board
+          where num > 0
+      ]]>
+	</select>
+
+	<select id="searchListCount" resultType="int">
+      <![CDATA[
+         select count(num)
+           from tbl_event_board
+          where num > 0
+      ]]>
+
+		<include refid="search" />
+	</select>
+	
+	<sql id="listPage">
+      <if test="listType == null">
+         ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum 
+      </if>
+      <if test="listType != null">
+         <if test="listType == ''.toString()">
+            ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum 
+         </if>
+         <if test="listType == 'dd'.toString()">
+            ROW_NUMBER() OVER (ORDER BY regdate DESC) rnum 
+         </if>
+         <if test="listType == 'da'.toString()">
+             ROW_NUMBER() OVER (ORDER BY regdate ASC) rnum 
+         </if>
+         <if test="listType == 'vc'.toString()">
+             ROW_NUMBER() OVER (ORDER BY viewcnt DESC) rnum 
+         </if>
+      </if>
+   </sql>
+	
+	<!-- 파일 가져오기 -->
+	<select id="getAttach" resultType="string">
+		SELECT name
+		FROM tbl_event_file
+		WHERE num = #{num}
+		ORDER BY regdate
+	</select>
+
+	<!-- 파일삭제 -->
+	<delete id="deleteAttach">
+		DELETE FROM tbl_event_file
+		WHERE num = #{num}
+	</delete>
+	
+	<select id="searchEventFileList" resultType="com.hbc.domain.EventFileVO">
+      <![CDATA[
+         SELECT *
+            FROM (SELECT f.num
+                       , f.name
+                    FROM tbl_event_board e JOIN tbl_event_file f ON e.num = f.num
+                  WHERE f.type = 0
+                  ORDER BY e.regdate DESC)
+           WHERE rownum <= 3
+       ]]>
+   </select>
+   
+   <select id="searchEventImgList" resultType="com.hbc.domain.MainEventVO">
+   SELECT b.title, b.content, f.name, f.num
+     FROM tbl_event_board b, (SELECT num, name FROM tbl_event_file WHERE type = 0) f 
+ 	WHERE b.num = f.num(+)
+ 	ORDER BY b.num DESC
+   </select>
+	
+	
+</mapper>
